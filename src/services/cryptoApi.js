@@ -1,62 +1,49 @@
-const API_BASE = "https://api.coingecko.com/api/v3";
 const CACHE_TTL = 45_000;
 
 const cache = new Map();
-const pendingRequests = new Map();
+const inflight = new Map();
 
-function getApiKey() {
-  const key = import.meta.env.VITE_COINGECKO_API_KEY;
+async function request(path, params = {}) {
+  const query = new URLSearchParams();
 
-  if (!key) {
-    throw new Error(
-      "CoinGecko API key is missing. Add VITE_COINGECKO_API_KEY to your .env file."
-    );
-  }
-
-  return key;
-}
-
-async function request(endpoint, params = {}, options = {}) {
-  const url = new URL(`${API_BASE}${endpoint}`);
+  query.set("path", path);
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
-      url.searchParams.set(key, value);
+      query.set(key, value);
     }
   });
 
-  const cacheKey = url.toString();
-  const now = Date.now();
+  const url = `/api/coingecko?${query.toString()}`;
+  const cacheKey = url;
 
-  if (!options.force) {
-    const cached = cache.get(cacheKey);
+  const cached = cache.get(cacheKey);
 
-    if (cached && now - cached.timestamp < CACHE_TTL) {
-      return cached.data;
-    }
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
   }
 
-  if (pendingRequests.has(cacheKey)) {
-    return pendingRequests.get(cacheKey);
+  if (inflight.has(cacheKey)) {
+    return inflight.get(cacheKey);
   }
 
-  const promise = fetch(url.toString(), {
-    headers: {
-      "x-cg-demo-api-key": getApiKey(),
-    },
-  })
+  const promise = fetch(url)
     .then(async (response) => {
-      if (response.status === 429) {
-        throw new Error(
-          "CoinGecko rate limit reached. Please wait a moment before refreshing."
-        );
-      }
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`CoinGecko returned HTTP ${response.status}.`);
-      }
+        if (response.status === 429) {
+          throw new Error(
+            "CoinGecko rate limit reached. Please wait a moment and retry."
+          );
+        }
 
-      const data = await response.json();
+        throw new Error(
+          data?.error ||
+            data?.status?.error_message ||
+            `API returned ${response.status}.`
+        );
+      }
 
       cache.set(cacheKey, {
         timestamp: Date.now(),
@@ -66,10 +53,10 @@ async function request(endpoint, params = {}, options = {}) {
       return data;
     })
     .finally(() => {
-      pendingRequests.delete(cacheKey);
+      inflight.delete(cacheKey);
     });
 
-  pendingRequests.set(cacheKey, promise);
+  inflight.set(cacheKey, promise);
 
   return promise;
 }
@@ -78,49 +65,66 @@ export function clearApiCache() {
   cache.clear();
 }
 
-export function getMarkets(options = {}) {
-  return request(
-    "/coins/markets",
-    {
-      vs_currency: "usd",
-      order: "market_cap_desc",
-      per_page: 250,
-      page: 1,
-      sparkline: true,
-      price_change_percentage: "1h,24h,7d,30d",
-      locale: "en",
-    },
-    options
-  );
+export function getMarkets() {
+  return request("/coins/markets", {
+    vs_currency: "usd",
+    order: "market_cap_desc",
+    per_page: 103,
+    page: 1,
+    sparkline: true,
+    price_change_percentage: "24h",
+    locale: "en",
+  });
 }
 
-export function getGlobalMarket(options = {}) {
-  return request("/global", {}, options);
+export function getGlobalMarket() {
+  return request("/global");
 }
 
-export function getTrending(options = {}) {
-  return request("/search/trending", {}, options);
+export function getTrending() {
+  return request("/search/trending");
 }
 
 export function getCoinChart(id, range) {
   const days =
-    range === "1H"
+    range === "1H" || range === "24H"
       ? 1
-      : range === "24H"
-        ? 1
-        : range === "7D"
-          ? 7
-          : range === "30D"
-            ? 30
-            : range === "1Y"
-              ? 365
-              : "max";
+      : range === "7D"
+        ? 7
+        : range === "30D"
+          ? 30
+          : range === "1Y"
+            ? 365
+            : "max";
 
-  return request(`/coins/${encodeURIComponent(id)}/market_chart`, {
-    vs_currency: "usd",
-    days,
-    interval:
-      range === "1Y" || range === "MAX" ? "daily" : undefined,
-    precision: "2",
+  return request(
+    `/coins/${encodeURIComponent(id)}/market_chart`,
+    {
+      vs_currency: "usd",
+      days,
+      interval:
+        range === "1Y" || range === "MAX"
+          ? "daily"
+          : undefined,
+      precision: "2",
+    }
+  ).then((data) => {
+    if (
+      range === "1H" &&
+      Array.isArray(data?.prices)
+    ) {
+      const oneHourAgo =
+        Date.now() - 60 * 60 * 1000;
+
+      return {
+        ...data,
+        prices: data.prices.filter(
+          ([timestamp]) =>
+            timestamp >= oneHourAgo
+        ),
+      };
+    }
+
+    return data;
   });
 }
