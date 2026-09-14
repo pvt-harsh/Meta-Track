@@ -145,8 +145,13 @@ a {
   font-weight: 800;
 }
 
-.logo-symbol {
-  color: var(--blue);
+.logo-image {
+  width: 34px;
+  height: 34px;
+
+  object-fit: contain;
+
+  display: block;
 }
 
 .navbar nav {

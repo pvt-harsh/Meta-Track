@@ -1134,14 +1134,17 @@ function App() {
 
       <header className="navbar">
         <a
-          className="logo"
-          href="#home"
-        >
-          <span className="logo-symbol">
-            ⚡
-          </span>
-          Meta Track
-        </a>
+  className="logo"
+  href="#home"
+>
+  <img
+    src="/favicon.png"
+    alt="Meta Track"
+    className="logo-image"
+  />
+
+  <span>Meta Track</span>
+</a>
 
         <nav>
           <a href="#dashboard">
@@ -1240,10 +1243,10 @@ function App() {
             </div>
 
             <div className="hero-price">
-              {loading
-                ? "Loading..."
-                : `${coins.length}+`}
-            </div>
+  {loading
+    ? "Loading..."
+    : "100+"}
+</div>
 
             <p>
               cryptocurrencies tracked
