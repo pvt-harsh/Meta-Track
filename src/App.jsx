@@ -1366,10 +1366,7 @@ function App() {
               }
             />
 
-            <StatCard
-              label="Tracked assets"
-              value={`${coins.length}`}
-            />
+            
 
             <StatCard
               label="Top gainer"
@@ -1406,10 +1403,8 @@ function App() {
               </h2>
 
               <p>
-                Search, filter and sort
-                {` ${coins.length || COIN_LIMIT}`}
-                cryptocurrencies.
-              </p>
+  Search, filter and sort cryptocurrencies.
+</p>
             </div>
 
             <div className="search-wrapper">
@@ -2339,26 +2334,21 @@ function App() {
 
       <footer className="footer">
         <div>
-          <strong>
-            ⚡ Meta Track
-          </strong>
+          <strong className="footer-brand">
+  <img src="/favicon.png" alt="Meta Track" />
+  Meta Track
+</strong>
 
           <span>
             Fast cryptocurrency market
             intelligence.
           </span>
         </div>
+        <div className="footer-tagline">
+  Track smarter. Stay ahead.
+</div>
 
-        <div className="footer-credit">
-          <span>
-            103+ assets · Local-first
-            features
-          </span>
-
-          <strong>
-            by Harsh
-          </strong>
-        </div>
+        <div className="footer-credit" />
       </footer>
 
       {/* COIN DETAIL MODAL */}
