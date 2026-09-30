@@ -3,7 +3,7 @@ const CACHE_TTL = 45_000;
 const cache = new Map();
 const inflight = new Map();
 
-async function request(path, params = {}) {
+async function request(path, params = {}, { force = false } = {}) {
   const query = new URLSearchParams();
 
   query.set("path", path);
@@ -17,10 +17,12 @@ async function request(path, params = {}) {
   const url = `/api/coingecko?${query.toString()}`;
   const cacheKey = url;
 
-  const cached = cache.get(cacheKey);
+  if (!force) {
+    const cached = cache.get(cacheKey);
 
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
   }
 
   if (inflight.has(cacheKey)) {
@@ -65,27 +67,53 @@ export function clearApiCache() {
   cache.clear();
 }
 
-export function getMarkets() {
-  return request("/coins/markets", {
-    vs_currency: "usd",
-    order: "market_cap_desc",
-    per_page: 103,
-    page: 1,
-    sparkline: true,
-    price_change_percentage: "24h",
-    locale: "en",
-  });
+// Fetches several pages of 250 coins (CoinGecko's per-page maximum) in
+// parallel. If page 1 fails, the error is thrown as before. If a later page
+// fails (for example a rate limit), the pages that did load are still
+// returned, so the app shows fewer coins instead of failing completely.
+export async function getMarkets({
+  force = false,
+  currency = "usd",
+  pages = 4,
+} = {}) {
+  const pageNumbers = Array.from({ length: pages }, (_, index) => index + 1);
+
+  const settled = await Promise.allSettled(
+    pageNumbers.map((page) =>
+      request(
+        "/coins/markets",
+        {
+          vs_currency: currency,
+          order: "market_cap_desc",
+          per_page: 250,
+          page,
+          sparkline: false,
+          price_change_percentage: "1h,24h,7d,30d,1y",
+          locale: "en",
+        },
+        { force }
+      )
+    )
+  );
+
+  if (settled[0].status === "rejected") {
+    throw settled[0].reason;
+  }
+
+  return settled
+    .filter((result) => result.status === "fulfilled")
+    .flatMap((result) => result.value);
 }
 
-export function getGlobalMarket() {
-  return request("/global");
+export function getGlobalMarket({ force = false } = {}) {
+  return request("/global", {}, { force });
 }
 
-export function getTrending() {
-  return request("/search/trending");
+export function getTrending({ force = false } = {}) {
+  return request("/search/trending", {}, { force });
 }
 
-export function getCoinChart(id, range) {
+export function getCoinChart(id, range, currency = "usd") {
   const days =
     range === "1H" || range === "24H"
       ? 1
@@ -97,31 +125,17 @@ export function getCoinChart(id, range) {
             ? 365
             : "max";
 
-  return request(
-    `/coins/${encodeURIComponent(id)}/market_chart`,
-    {
-      vs_currency: "usd",
-      days,
-      interval:
-        range === "1Y" || range === "MAX"
-          ? "daily"
-          : undefined,
-      precision: "2",
-    }
-  ).then((data) => {
-    if (
-      range === "1H" &&
-      Array.isArray(data?.prices)
-    ) {
-      const oneHourAgo =
-        Date.now() - 60 * 60 * 1000;
+  return request(`/coins/${encodeURIComponent(id)}/market_chart`, {
+    vs_currency: currency,
+    days,
+    interval: range === "1Y" || range === "MAX" ? "daily" : undefined,
+  }).then((data) => {
+    if (range === "1H" && Array.isArray(data?.prices)) {
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
       return {
         ...data,
-        prices: data.prices.filter(
-          ([timestamp]) =>
-            timestamp >= oneHourAgo
-        ),
+        prices: data.prices.filter(([timestamp]) => timestamp >= oneHourAgo),
       };
     }
 
