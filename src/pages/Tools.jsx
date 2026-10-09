@@ -150,7 +150,8 @@ export default function Tools() {
   const [tab, setTab] = useState("convert");
   return (
     <div data-fmt={fmtKey}>
-      <PageHeader eyebrow="Tools" title="Calculators" description="Free for everyone — no account needed. Nothing you type leaves your browser."
+      <PageHeader eyebrow="Tools" title="Calculators" description="Convert between crypto and cash, estimate profit and loss, and size your positions."
+
         actions={<Segmented label="Tool" value={tab} onChange={setTab} options={TABS} />} />
       {tab === "convert" && <Converter />}
       {tab === "pl" && <ProfitLoss />}
