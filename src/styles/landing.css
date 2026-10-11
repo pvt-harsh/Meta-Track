@@ -11,7 +11,21 @@
 .wm { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.058em; font-size: clamp(2.7rem, 10.4vw, 9.4rem); line-height: 1; white-space: nowrap; }
 .wm sup { font-size: 0.17em; font-weight: 500; letter-spacing: 0; vertical-align: top; position: relative; top: 0.5em; margin-left: 0.14em; }
 .wm-modern { font-weight: 700; letter-spacing: -0.065em; font-size: clamp(3rem, 11vw, 10rem); }
-.wm-grad { background: linear-gradient(100deg, #8b6cff 10%, #5b8cff 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+/* ---------- glass wordmark ---------- */
+.lp-text { perspective: 1100px; }
+.wm-glass { will-change: transform; filter: drop-shadow(0 12px 30px rgba(10,6,30,.45)) drop-shadow(0 2px 10px rgba(139,108,255,.16)); }
+.wm-l { position: relative; display: inline-block; animation: wm-rise .9s cubic-bezier(.2,.7,.2,1) backwards; animation-delay: calc(.5s + var(--li) * .05s); background: linear-gradient(180deg, rgba(255,255,255,.8) 0%, rgba(255,255,255,.08) 44%, rgba(255,255,255,.3) 58%, rgba(255,255,255,.04) 100%), linear-gradient(180deg, color-mix(in srgb, var(--text) 74%, transparent), color-mix(in srgb, var(--text) 74%, transparent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wm-l:nth-child(n+5) { background: linear-gradient(180deg, rgba(255,255,255,.8) 0%, rgba(255,255,255,.08) 44%, rgba(255,255,255,.3) 58%, rgba(255,255,255,.04) 100%), linear-gradient(100deg, rgba(154,123,255,.82), rgba(91,140,255,.82) 35%, rgba(201,184,255,.82) 50%, rgba(91,140,255,.82) 65%, rgba(154,123,255,.82)); background-size: 100% 100%, 240% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: wm-rise .9s cubic-bezier(.2,.7,.2,1) backwards, wm-flow 9s linear infinite; animation-delay: calc(.5s + var(--li) * .05s), 0s; }
+.wm-l::before { content: attr(data-ch); position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 24%); -webkit-background-clip: text; background-clip: text; color: transparent; opacity: .8; }
+.wm-l::after { content: attr(data-ch); position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.55) 50%, transparent 60%); background-size: 300% 100%; background-position: calc(50% + var(--lx, 0) * 55%) 0; -webkit-background-clip: text; background-clip: text; color: transparent; opacity: var(--lxo, 0); transition: opacity .5s; }
+@keyframes wm-rise { from { opacity: 0; transform: translateY(.45em) rotate(6deg); } }
+@keyframes wm-flow { to { background-position: 0 0, 240% center; } }
+[data-theme="light"] .wm-l:nth-child(-n+4) {
+  background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,0) 38%, rgba(0,0,0,.3) 62%, rgba(255,255,255,.1) 100%), linear-gradient(180deg, #54545e 0%, #141418 52%, #3b3b44 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 .pillnav { position: fixed; top: max(14px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 2px; padding: 5px; border-radius: 999px; background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(16px) saturate(1.5); -webkit-backdrop-filter: blur(16px) saturate(1.5); box-shadow: var(--shadow-md); }
 .pillnav a, .pillnav button { padding: 8px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500; color: var(--text-2); transition: background var(--t-base), color var(--t-base); white-space: nowrap; }
 .pillnav a:hover, .pillnav button:hover { background: var(--accent-soft); color: var(--text); }
@@ -157,7 +171,7 @@
 .gate li .icon { color: var(--up); flex: none; }
 .gate .btn-hero, .gate .btn-ghost-l { margin-top: auto; align-self: flex-start; }
 @property --ga { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.gate-pro::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px; background: conic-gradient(from var(--ga), transparent 0deg, color-mix(in srgb, var(--accent) 55%, transparent) 60deg, var(--accent) 110deg, #c9b8ff 150deg, transparent 210deg); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: gate-beam 4.2s linear infinite; pointer-events: none; }
+.gate-pro::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px; background: conic-gradient(from var(--ga), transparent 0deg, color-mix(in srgb, var(--accent) 55%, transparent) 60deg, var(--accent) 110deg, #c9b8ff 150deg, transparent 210deg); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: gate-beam 4.2s linear infinite; pointer-events: none; }
 @keyframes gate-beam { to { --ga: 360deg; } }
 .gate-pro { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), color-mix(in srgb, var(--surface) 88%, transparent) 65%); }
 .btn-shine { position: relative; overflow: hidden; isolation: isolate; }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Field, PageHeader, Segmented } from "../components/ui";
+import { Field, PageHeader } from "../components/ui";
+import Icon from "../components/Icon";
 import CoinLogo from "../components/CoinLogo";
 import { useData } from "../context/DataContext";
 import { useDocumentTitle } from "../hooks";
@@ -142,20 +143,77 @@ function RiskCalc() {
   );
 }
 
-const TABS = [{ value: "convert", label: "Converter" }, { value: "pl", label: "Profit & loss" }, { value: "risk", label: "Position size" }];
+const TOOL_META = [
+  { id: "convert", name: "Converter", desc: "Convert between crypto and cash at live market prices.", icon: "compare", cat: "Convert" },
+  { id: "pl", name: "Profit & loss", desc: "What a trade returns after fees on the buy and the sell.", icon: "trendUp", cat: "Trade" },
+  { id: "risk", name: "Position size", desc: "Size a position so a stop-out costs only what you risk.", icon: "shield", cat: "Trade" },
+];
+const CATS = ["All", "Convert", "Trade"];
+const TOOL_BODY = {
+  convert: <Converter />,
+  pl: <ProfitLoss />,
+  risk: <RiskCalc />,
+};
 
 export default function Tools() {
   useDocumentTitle("Tools");
   const { fmtKey } = useData();
-  const [tab, setTab] = useState("convert");
+  const [open, setOpen] = useState(null);
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("All");
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return TOOL_META.filter((t) =>
+      (cat === "All" || t.cat === cat) &&
+      (!needle || `${t.name} ${t.desc} ${t.cat}`.toLowerCase().includes(needle)));
+  }, [q, cat]);
+  const active = TOOL_META.find((t) => t.id === open);
+
   return (
     <div data-fmt={fmtKey}>
-      <PageHeader eyebrow="Tools" title="Calculators" description="Convert between crypto and cash, estimate profit and loss, and size your positions."
-
-        actions={<Segmented label="Tool" value={tab} onChange={setTab} options={TABS} />} />
-      {tab === "convert" && <Converter />}
-      {tab === "pl" && <ProfitLoss />}
-      {tab === "risk" && <RiskCalc />}
+      <PageHeader eyebrow="Tools" title="Calculators"
+        description="Three purpose-built calculators for converting and trading. Everything runs in your browser." />
+      {open && active ? (
+        <div className="tool-detail" key={active.id}>
+          <button type="button" className="btn btn-ghost btn-sm tool-back" onClick={() => setOpen(null)}>
+            <Icon name="chevronLeft" size={15} /> All tools
+          </button>
+          {TOOL_BODY[active.id]}
+        </div>
+      ) : (
+        <>
+          <div className="tools-bar">
+            <label className="tools-search">
+              <Icon name="search" size={16} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search tools…" aria-label="Search tools" />
+              {<button type="button" className={`tools-clear${q ? " show" : ""}`} onClick={() => setQ("")} aria-label="Clear search" tabIndex={q ? 0 : -1}><Icon name="close" size={14} /></button>}
+            </label>
+            <div className="chips" role="group" aria-label="Tool categories">
+              {CATS.map((c) => (
+                <button key={c} type="button" className={`chip${cat === c ? " active" : ""}`} aria-pressed={cat === c} onClick={() => setCat(c)}>{c}</button>
+              ))}
+            </div>
+          </div>
+          {filtered.length ? (
+            <div className="tools-grid">
+              {filtered.map((t) => (
+                <button key={t.id} type="button" className="tool-card" onClick={() => setOpen(t.id)} aria-label={`Open ${t.name}`}>
+                  <span className="tool-ic"><Icon name={t.icon} size={18} /></span>
+                  <span className="tool-tx"><b>{t.name}</b><i>{t.desc}</i></span>
+                  <span className="tool-meta"><em>{t.cat}</em><Icon name="arrowRight" size={15} className="tool-go" /></span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="tools-empty">
+              <Icon name="search" size={22} />
+              <b>No tools match “{q.trim()}”.</b>
+              <p className="muted">Try a different search, or browse a category.</p>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setQ(""); setCat("All"); }}>Show all tools</button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

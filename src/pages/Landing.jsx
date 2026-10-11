@@ -143,6 +143,7 @@ export default function Landing() {
   const { user, requireAuth } = useAuth();
   const navigate = useNavigate();
   const stage = useRef(null);
+  const wmRef = useRef(null);
   useReveal();
 
   useEffect(() => { document.title = "MetaTrack — Track the whole crypto market. No sign-in needed."; }, []);
@@ -162,6 +163,70 @@ export default function Landing() {
     return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
   }, []);
 
+  // Glass wordmark cursor response: the wordmark tilts/shifts toward the pointer
+  // direction (vector from the wordmark's resting center), with a spring for an
+  // organic trailing feel, and the specular highlight travels with it. Targets
+  // ease back to rest when the pointer idles or leaves. Direct DOM writes only —
+  // no React re-renders per mousemove; transform-only (GPU-friendly).
+  useEffect(() => {
+    if (motionReduced()) return undefined;
+    const wm = wmRef.current;
+    if (!wm) return undefined;
+    const RX = 20, RY = 14, RRX = 5, RRY = 7;
+    let tPX = 0, tPY = 0, tRX = 0, tRY = 0, tL = 0, tLO = 0;
+    let px = 0, py = 0, rx = 0, ry = 0, lx = 0;
+    let vx = 0, vy = 0, vrx = 0, vry = 0;
+    let raf = 0, running = false, lastMove = 0, inside = false;
+    let cx = window.innerWidth / 2, cy = window.innerHeight * 0.42;
+    const measure = () => { const r = wm.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; };
+    const targets = (dx, dy) => {
+      tPX = dx * RX; tPY = dy * RY; tRX = dy * RRX; tRY = dx * RRY; tL = dx;
+    };
+    const tick = () => {
+      const idle = performance.now() - lastMove > 1400;
+      if (idle || !inside) { tPX = 0; tPY = 0; tRX = 0; tRY = 0; tL = 0; tLO = 0; }
+      else tLO = 1;
+      const st = 0.055, dp = 0.84;
+      vx = (vx + (tPX - px) * st) * dp; px += vx;
+      vy = (vy + (tPY - py) * st) * dp; py += vy;
+      vrx = (vrx + (tRX - rx) * st) * dp; rx += vrx;
+      vry = (vry + (tRY - ry) * st) * dp; ry += vry;
+      lx += (tL - lx) * 0.1;
+      const energy = Math.abs(vx) + Math.abs(vy) + Math.abs(vrx) + Math.abs(vry)
+        + Math.abs(tPX - px) + Math.abs(tPY - py) + Math.abs(tRX - rx) + Math.abs(tRY - ry);
+      if (energy > 0.02) {
+        wm.style.transform = `translate3d(${px.toFixed(2)}px, ${py.toFixed(2)}px, 0) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg)`;
+        wm.style.setProperty("--lx", lx.toFixed(3));
+        wm.style.setProperty("--lxo", tLO.toFixed(2));
+        raf = requestAnimationFrame(tick);
+      } else {
+        running = false;
+        wm.style.transform = "";
+        wm.style.setProperty("--lx", "0");
+        wm.style.setProperty("--lxo", "0");
+      }
+    };
+    const kick = () => { if (!running) { running = true; raf = requestAnimationFrame(tick); } };
+    const onMove = (e) => {
+      inside = true; lastMove = performance.now();
+      const dx = Math.max(-1, Math.min(1, (e.clientX - cx) / (window.innerWidth / 2)));
+      const dy = Math.max(-1, Math.min(1, (e.clientY - cy) / (window.innerHeight / 2)));
+      targets(dx, dy);
+      kick();
+    };
+    const onLeave = () => { inside = false; kick(); };
+    measure();
+    window.addEventListener("mousemove", onMove, { passive: true });
+    document.documentElement.addEventListener("mouseleave", onLeave);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      document.documentElement.removeEventListener("mouseleave", onLeave);
+      window.removeEventListener("resize", measure);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   const toApp = () => navigate("/dashboard");
 
   return (
@@ -178,7 +243,7 @@ export default function Landing() {
       <header className="lp-hero" ref={stage}>
         <OrbitHero play className="lp-orbit">
           <div className="lp-text" data-orbit-text>
-            <h1 className="wm wm-modern" aria-label="MetaTrack"><span>Meta</span><span className="wm-grad">Track</span></h1>
+            <h1 ref={wmRef} className="wm wm-modern wm-glass" aria-label="MetaTrack">{"MetaTrack".split("").map((ch, i) => <span key={i} className="wm-l" data-ch={ch} aria-hidden="true" style={{ "--li": i }}>{ch}</span>)}</h1>
             <p className="lp-tag">A crypto tracker for <RotatingWord words={WORDS_HERO} /></p>
             <div className="lp-cta">
               <button type="button" className="btn-hero" onClick={toApp}>Open dashboard <Icon name="arrowRight" size={16} /></button>
